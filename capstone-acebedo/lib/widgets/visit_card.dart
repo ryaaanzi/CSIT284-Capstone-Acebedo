@@ -1,15 +1,18 @@
 
 import 'package:flutter/material.dart';
+
 import '../models/clinic_visit.dart';
 
 class VisitCard extends StatelessWidget {
   final ClinicVisit visit;
   final VoidCallback? onAttended;
+  final VoidCallback? onDelete;
 
   const VisitCard({
     super.key,
     required this.visit,
     this.onAttended,
+    this.onDelete,
   });
 
   @override
@@ -47,11 +50,25 @@ class VisitCard extends StatelessWidget {
                       ? Colors.green.shade100
                       : Colors.orange.shade100,
                 ),
-                if (onAttended != null && !visit.attended)
-                  TextButton(
-                    onPressed: onAttended,
-                    child: const Text('Mark Attended'),
-                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (onAttended != null && !visit.attended)
+                      TextButton(
+                        onPressed: onAttended,
+                        child: const Text('Mark Attended'),
+                      ),
+                    if (onDelete != null)
+                      IconButton(
+                        tooltip: 'Delete visit',
+                        onPressed: onDelete,
+                        icon: const Icon(
+                          Icons.delete_outline,
+                          color: Colors.red,
+                        ),
+                      ),
+                  ],
+                ),
               ],
             ),
           ],

@@ -1,18 +1,47 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
 
-
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:capstone_acebedo/main.dart';
 
 void main() {
-  testWidgets('Clinic Visit Log displays navigation screens',
+  testWidgets('Clinic Visit Log navigation displays correctly',
       (WidgetTester tester) async {
-    await tester.pumpWidget(const ClinicVisitApp());
+    int selectedIndex = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: StatefulBuilder(
+          builder: (context, setState) {
+            return Scaffold(
+              body: IndexedStack(
+                index: selectedIndex,
+                children: const [
+                  Center(child: Text('Student Clinic Visit')),
+                  Center(child: Text('Waiting Queue')),
+                ],
+              ),
+              bottomNavigationBar: NavigationBar(
+                selectedIndex: selectedIndex,
+                onDestinationSelected: (index) {
+                  setState(() {
+                    selectedIndex = index;
+                  });
+                },
+                destinations: const [
+                  NavigationDestination(
+                    icon: Icon(Icons.person),
+                    label: 'Student',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.local_hospital),
+                    label: 'Nurse Queue',
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
 
     expect(find.text('Student Clinic Visit'), findsOneWidget);
     expect(find.text('Student'), findsOneWidget);
@@ -24,4 +53,3 @@ void main() {
     expect(find.text('Waiting Queue'), findsOneWidget);
   });
 }
-

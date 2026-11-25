@@ -1,15 +1,12 @@
 
 import 'package:flutter/material.dart';
+
 import '../models/clinic_visit.dart';
+import '../services/firestore_service.dart';
 import '../widgets/visit_card.dart';
 
 class StudentVisitScreen extends StatefulWidget {
-  final List<ClinicVisit> visits;
-
-  const StudentVisitScreen({
-    super.key,
-    required this.visits,
-  });
+  const StudentVisitScreen({super.key});
 
   @override
   State<StudentVisitScreen> createState() => _StudentVisitScreenState();
@@ -22,7 +19,11 @@ class _StudentVisitScreenState extends State<StudentVisitScreen> {
   final TextEditingController symptomController =
       TextEditingController();
 
-  void submitVisit() {
+  final FirestoreService firestoreService = FirestoreService();
+
+  bool isSubmitting = false;
+
+  Future<void> submitVisit() async {
     final studentId = studentIdController.text.trim();
     final symptom = symptomController.text.trim();
 
@@ -36,24 +37,43 @@ class _StudentVisitScreenState extends State<StudentVisitScreen> {
     }
 
     setState(() {
-      widget.visits.insert(
-        0,
-        ClinicVisit(
-          studentId: studentId,
-          symptom: symptom,
-          timestamp: DateTime.now(),
-        ),
-      );
+      isSubmitting = true;
     });
 
-    studentIdController.clear();
-    symptomController.clear();
+    try {
+      final visit = ClinicVisit(
+        studentId: studentId,
+        symptom: symptom,
+        timestamp: DateTime.now(),
+      );
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Clinic visit submitted successfully!'),
-      ),
-    );
+      await firestoreService.addVisit(visit);
+
+      if (!mounted) return;
+
+      studentIdController.clear();
+      symptomController.clear();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Clinic visit submitted successfully!'),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Unable to submit visit: $error'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          isSubmitting = false;
+        });
+      }
+    }
   }
 
   @override
@@ -84,9 +104,7 @@ class _StudentVisitScreenState extends State<StudentVisitScreen> {
                     children: [
                       Text(
                         'Log a Clinic Visit',
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleLarge,
+                        style: Theme.of(context).textTheme.titleLarge,
                       ),
                       const SizedBox(height: 16),
                       TextField(
@@ -112,9 +130,19 @@ class _StudentVisitScreenState extends State<StudentVisitScreen> {
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton.icon(
-                          onPressed: submitVisit,
-                          icon: const Icon(Icons.send),
-                          label: const Text('Submit Visit'),
+                          onPressed: isSubmitting ? null : submitVisit,
+                          icon: isSubmitting
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.send),
+                          label: Text(
+                            isSubmitting ? 'Submitting...' : 'Submit Visit',
+                          ),
                         ),
                       ),
                     ],
@@ -133,8 +161,40 @@ class _StudentVisitScreenState extends State<StudentVisitScreen> {
               ),
             ),
             const SizedBox(height: 8),
-            ...widget.visits.take(5).map(
-              (visit) => VisitCard(visit: visit),
+            StreamBuilder<List<ClinicVisit>>(
+              stream: firestoreService.getVisits(),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Text('Unable to load clinic visits.'),
+                  );
+                }
+
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(16),
+                      child: CircularProgressIndicator(),
+                    ),
+                  );
+                }
+
+                final visits = snapshot.data ?? [];
+
+                if (visits.isEmpty) {
+                  return const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Text('No clinic visits recorded yet.'),
+                  );
+                }
+
+                return Column(
+                  children: visits.take(5).map(
+                    (visit) => VisitCard(visit: visit),
+                  ).toList(),
+                );
+              },
             ),
           ],
         ),

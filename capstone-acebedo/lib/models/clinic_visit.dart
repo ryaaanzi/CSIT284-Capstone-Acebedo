@@ -1,18 +1,47 @@
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class ClinicVisit {
+  final String? id;
   final String studentId;
   final String symptom;
   final DateTime timestamp;
   bool attended;
 
   ClinicVisit({
+    this.id,
     required this.studentId,
     required this.symptom,
     required this.timestamp,
     this.attended = false,
   });
+
+  // Convert a clinic visit into Firestore data.
+  Map<String, dynamic> toMap() {
+    return {
+      'studentId': studentId,
+      'symptom': symptom,
+      'timestamp': Timestamp.fromDate(timestamp),
+      'attended': attended,
+    };
+  }
+
+  // Convert Firestore data into a clinic visit.
+  factory ClinicVisit.fromMap(
+    String documentId,
+    Map<String, dynamic> data,
+  ) {
+    return ClinicVisit(
+      id: documentId,
+      studentId: data['studentId'] ?? '',
+      symptom: data['symptom'] ?? '',
+      timestamp: (data['timestamp'] as Timestamp).toDate(),
+      attended: data['attended'] ?? false,
+    );
+  }
 }
 
+// Ten sample records for initial database testing.
 final List<ClinicVisit> dummyVisits = [
   ClinicVisit(
     studentId: '2026-001',
