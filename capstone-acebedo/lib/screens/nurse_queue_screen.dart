@@ -12,8 +12,34 @@ class NurseQueueScreen extends StatelessWidget {
 
   Future<void> markAsAttended(ClinicVisit visit) async {
     if (visit.id == null) return;
-
     await firestoreService.markAsAttended(visit.id!);
+  }
+
+  Future<void> deleteVisit(
+    BuildContext context,
+    ClinicVisit visit,
+  ) async {
+    if (visit.id == null) return;
+
+    try {
+      await firestoreService.deleteVisit(visit.id!);
+
+      if (!context.mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Clinic visit deleted successfully.'),
+        ),
+      );
+    } catch (error) {
+      if (!context.mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Unable to delete visit: $error'),
+        ),
+      );
+    }
   }
 
   @override
@@ -70,71 +96,81 @@ class NurseQueueScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Waiting Queue',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
+
               Expanded(
-                child: waitingVisits.isEmpty
-                    ? const Center(
-                        child: Text('No students in the waiting queue.'),
-                      )
-                    : ListView.builder(
-                        itemCount: waitingVisits.length,
-                        itemBuilder: (context, index) {
-                          final visit = waitingVisits[index];
-
-                        return VisitCard(
-  visit: visit,
-  onAttended: () async {
-    try {
-      await markAsAttended(visit);
-    } catch (error) {
-      if (!context.mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Unable to update visit: $error'),
-        ),
-      );
-    }
-  },
-  onDelete: () async {
-    if (visit.id == null) return;
-
-    try {
-      await firestoreService.deleteVisit(visit.id!);
-
-      if (!context.mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Clinic visit deleted successfully.'),
-        ),
-      );
-    } catch (error) {
-      if (!context.mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Unable to delete visit: $error'),
-        ),
-      );
-    }
-  },
-);
-                        },
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  children: [
+                    const Text(
+                      'Waiting Queue',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
                       ),
+                    ),
+                    const SizedBox(height: 8),
+
+                    if (waitingVisits.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        child: Center(
+                          child: Text(
+                            'No students in the waiting queue.',
+                          ),
+                        ),
+                      )
+                    else
+                      ...waitingVisits.map(
+                        (visit) => VisitCard(
+                          visit: visit,
+                          onAttended: () async {
+                            try {
+                              await markAsAttended(visit);
+                            } catch (error) {
+                              if (!context.mounted) return;
+
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'Unable to update visit: $error',
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+                          onDelete: () => deleteVisit(context, visit),
+                        ),
+                      ),
+
+                    const SizedBox(height: 24),
+
+                    const Text(
+                      'Attended Visits',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+
+                    if (attendedVisits.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        child: Center(
+                          child: Text('No attended visits yet.'),
+                        ),
+                      )
+                    else
+                      ...attendedVisits.map(
+                        (visit) => VisitCard(
+                          visit: visit,
+                          onDelete: () => deleteVisit(context, visit),
+                        ),
+                      ),
+
+                    const SizedBox(height: 16),
+                  ],
+                ),
               ),
             ],
           );
